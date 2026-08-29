@@ -1,0 +1,49 @@
+{
+  "Version": "2019-10-30",
+  "StartAction": "Greeting",
+  "Metadata": {
+    "entryPointPosition": {
+      "x": 20,
+      "y": 20
+    },
+    "ActionMetadata": {
+      "Greeting": {
+        "position": {
+          "x": 280,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
+      "Disconnect": {
+        "position": {
+          "x": 540,
+          "y": 20
+        },
+        "isFriendlyName": true
+      }
+    }
+  },
+  "Actions": [
+    {
+      "Identifier": "Greeting",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "Asana self-service module placeholder."
+      },
+      "Transitions": {
+        "NextAction": "Disconnect",
+        "Errors": [
+          {
+            "NextAction": "Disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "Disconnect",
+      "Type": "DisconnectParticipant",
+      "Parameters": {}
+    }
+  ]
+}
