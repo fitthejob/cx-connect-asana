@@ -38,7 +38,7 @@ resource "aws_secretsmanager_secret_version" "asana_api_token" {
 }
 
 resource "aws_iam_policy" "asana_tickets_secrets_access" {
-  name = "lambda-asana-tickets-secrets-policy-${var.environment}"
+  name = "lambda-asana-ticket-secrets-policy-${var.environment}"
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
