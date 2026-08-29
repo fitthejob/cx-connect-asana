@@ -50,7 +50,7 @@ export const handler = async (event: ConnectLambdaEvent) => {
     );
   }
 
-  const apiToken = await getAsanaApiToken;
+  const apiToken = await getAsanaApiToken();
 
   const response = await fetch(`${ASANA_API_BASE}/tasks`, {
     method: "POST",
