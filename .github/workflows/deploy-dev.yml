@@ -1,0 +1,75 @@
+name: Deploy Dev
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build-artifact:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: OIDC Authentication
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Install & build asana-ticket
+        working-directory: modules/lambda-asana-ticket/src
+        run: |
+          npm ci
+          npm run build
+
+      - name: Zip asana-ticket
+        working-directory: modules/lambda-asana-ticket/src/dist
+        run: zip -r ../asana-ticket.zip .
+
+      - name: Upload asana-ticket artifact
+        working-directory: modules/lambda-asana-ticket/src
+        run: |
+          aws s3 cp asana-ticket.zip \
+            s3://${{ vars.LAMBDA_ARTIFACTS_BUCKET }}/asana-ticket/dev/asana-ticket-${{ github.sha }}.zip
+
+  deploy-dev:
+    needs: build-artifact
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+
+      - name: OIDC Authentication
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: us-east-1
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: |
+          terraform apply -auto-approve \
+            -var="environment=dev" \
+            -var="asana_ticket_function_name=asana-ticket-dev" \
+            -var="s3_bucket_lambda_artifacts=${{ vars.LAMBDA_ARTIFACTS_BUCKET }}" \
+            -var="asana_ticket_s3_key=asana-ticket/dev/asana-ticket-${{ github.sha }}.zip" \
+            -var="asana_project_gid=${{ vars.ASANA_PROJECT_GID }}"
