@@ -88,6 +88,7 @@ resource "aws_lambda_function" "asana_ticket" {
   s3_bucket     = var.s3_bucket_lambda_artifacts
   s3_key        = var.s3_key
   publish       = true
+  timeout       = 10
 
   environment {
     variables = {
