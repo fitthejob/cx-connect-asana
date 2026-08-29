@@ -21,7 +21,8 @@ data "aws_iam_policy_document" "trust" {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:fitthejob/cx-connect-asana:ref:refs/heads/main"
+        "repo:fitthejob/cx-connect-asana:ref:refs/heads/main",
+        "repo:fitthejob@210087960/cx-connect-asana@1350889274:ref:refs/heads/main"
       ]
     }
   }
@@ -31,6 +32,39 @@ resource "aws_iam_role" "deploy" {
   name               = "cx-connect-asana-deploy-role"
   description        = "GitHub Actions OIDC deploy role for cx-connect-asana CI"
   assume_role_policy = data.aws_iam_policy_document.trust.json
+}
+
+data "aws_iam_policy_document" "pr_checks_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRoleWithWebIdentity"]
+
+    principals {
+      type        = "Federated"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com"]
+    }
+
+    condition {
+      test     = "StringEquals"
+      variable = "token.actions.githubusercontent.com:aud"
+      values   = ["sts.amazonaws.com"]
+    }
+
+    condition {
+      test     = "StringLike"
+      variable = "token.actions.githubusercontent.com:sub"
+      values = [
+        "repo:fitthejob/cx-connect-asana:pull_request",
+        "repo:fitthejob@210087960/cx-connect-asana@1350889274:pull_request"
+      ]
+    }
+  }
+}
+
+resource "aws_iam_role" "pr_checks" {
+  name               = "cx-connect-asana-pr-checks-role"
+  description        = "GitHub Actions OIDC read-only role for cx-connect-asana PR checks (terraform plan/validate, security scans)"
+  assume_role_policy = data.aws_iam_policy_document.pr_checks_trust.json
 }
 
 data "aws_iam_policy_document" "deploy_permissions" {
@@ -62,6 +96,13 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*",
       "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*:*",
     ]
+  }
+
+  statement {
+    sid       = "LambdaLayerRead"
+    effect    = "Allow"
+    actions   = ["lambda:GetLayerVersion"]
+    resources = ["*"]
   }
 
   statement {
@@ -141,6 +182,7 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "secretsmanager:DeleteSecret",
       "secretsmanager:DescribeSecret",
       "secretsmanager:GetSecretValue",
+      "secretsmanager:GetResourcePolicy",
       "secretsmanager:PutSecretValue",
       "secretsmanager:TagResource",
       "secretsmanager:UntagResource",
@@ -164,6 +206,8 @@ data "aws_iam_policy_document" "deploy_permissions" {
     actions = [
       "iam:GetPolicy",
       "iam:GetPolicyVersion",
+      "iam:AttachRolePolicy",
+      "iam:DetachRolePolicy",
     ]
     resources = [
       "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
@@ -236,6 +280,140 @@ resource "aws_iam_role_policy_attachment" "deploy" {
   policy_arn = aws_iam_policy.deploy.arn
 }
 
+data "aws_iam_policy_document" "pr_checks_permissions" {
+  statement {
+    sid    = "LambdaFunctionReadOnly"
+    effect = "Allow"
+    actions = [
+      "lambda:GetFunction",
+      "lambda:GetFunctionConfiguration",
+      "lambda:GetFunctionCodeSigningConfig",
+      "lambda:GetFunctionEventInvokeConfig",
+      "lambda:GetAlias",
+      "lambda:ListVersionsByFunction",
+      "lambda:ListAliases",
+      "lambda:GetPolicy",
+    ]
+    resources = [
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*:*",
+    ]
+  }
+
+  statement {
+    sid    = "ConnectReadOnly"
+    effect = "Allow"
+    actions = [
+      "connect:Describe*",
+      "connect:Get*",
+      "connect:List*",
+    ]
+    # Same unscoped-to-instance-ARN reasoning as ConnectFlowModuleManage in
+    # deploy_permissions above -- this role has no Connect instance ID input.
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "IamReadOnly"
+    effect = "Allow"
+    actions = [
+      "iam:GetRole",
+      "iam:GetPolicy",
+      "iam:GetPolicyVersion",
+      "iam:GetRolePolicy",
+      "iam:ListRolePolicies",
+      "iam:ListAttachedRolePolicies",
+      "iam:ListPolicyVersions",
+    ]
+    resources = [
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/lambda-asana-ticket-*",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/lambda-asana-ticket-*",
+    ]
+  }
+
+  statement {
+    sid    = "SqsReadOnly"
+    effect = "Allow"
+    actions = [
+      "sqs:GetQueueAttributes",
+      "sqs:GetQueueUrl",
+      "sqs:ListQueueTags",
+    ]
+    resources = [
+      "arn:aws:sqs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:lambda-asana-ticket-*",
+    ]
+  }
+
+  statement {
+    sid    = "SecretsManagerReadOnly"
+    effect = "Allow"
+    actions = [
+      "secretsmanager:DescribeSecret",
+    ]
+    # No GetSecretValue here -- terraform plan/validate never needs the
+    # actual secret value, only its metadata (matches deploy_permissions'
+    # SecretsManagerManage scope, read-only subset).
+    resources = [
+      "arn:aws:secretsmanager:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:secret:asana-api-token-*",
+    ]
+  }
+
+  statement {
+    sid       = "LambdaKmsKeyReadOnly"
+    effect    = "Allow"
+    actions   = ["kms:DescribeKey"]
+    resources = ["arn:aws:kms:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:key/*"]
+  }
+
+  statement {
+    sid    = "StateBucketAccess"
+    effect = "Allow"
+    # terraform plan still acquires the S3-native state lock (use_lockfile =
+    # true in backend.tf), which requires PutObject/DeleteObject on the
+    # .tflock file even for a read-only plan -- same as connect-terraform's
+    # pr_checks_permissions StateBucketAccess statement.
+    actions = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
+    resources = [
+      "arn:aws:s3:::${var.tfstate_bucket}",
+      "arn:aws:s3:::${var.tfstate_bucket}/*",
+    ]
+  }
+
+  statement {
+    sid    = "ConnectTerraformStateReadOnly"
+    effect = "Allow"
+    actions = [
+      "s3:GetObject",
+      "s3:ListBucket",
+    ]
+    resources = [
+      "arn:aws:s3:::${var.connect_terraform_tfstate_bucket}/connect/dev/terraform.tfstate",
+      "arn:aws:s3:::${var.connect_terraform_tfstate_bucket}",
+    ]
+  }
+
+  statement {
+    sid       = "CallerIdentityForArnConstruction"
+    effect    = "Allow"
+    actions   = ["sts:GetCallerIdentity"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "pr_checks" {
+  name   = "cx-connect-asana-pr-checks-policy"
+  policy = data.aws_iam_policy_document.pr_checks_permissions.json
+}
+
+resource "aws_iam_role_policy_attachment" "pr_checks" {
+  role       = aws_iam_role.pr_checks.name
+  policy_arn = aws_iam_policy.pr_checks.arn
+}
+
 output "deploy_role_arn" {
   value = aws_iam_role.deploy.arn
+}
+
+output "pr_checks_role_arn" {
+  value = aws_iam_role.pr_checks.arn
 }
