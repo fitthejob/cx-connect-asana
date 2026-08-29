@@ -118,15 +118,11 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "connect:TagResource",
       "connect:UntagResource",
     ]
-    # Not scoped to the specific Connect instance ARN -- this role has no
-    # input for the instance ID (it's only known via connect-terraform's
-    # remote state, not a resource this role owns), same deferred scoping
-    # gap connect-terraform's own modules/iam leaves for ConnectManage.
     resources = ["*"]
   }
 
   statement {
-    sid    = "IamScopedToThisLambda"
+    sid    = "IamAsanaLambdaResourceManage"
     effect = "Allow"
     actions = [
       "iam:GetRole",
@@ -152,8 +148,8 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "iam:ListPolicyVersions",
     ]
     resources = [
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/lambda-asana-ticket-*",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/lambda-asana-ticket-*",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/lambda-asana-*-${var.environment}",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/lambda-asana-*-${var.environment}",
     ]
   }
 
@@ -251,11 +247,6 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "s3:GetObject",
       "s3:ListBucket",
     ]
-    # This repo's own data.terraform_remote_state.connect-terraform reads
-    # connect/dev/terraform.tfstate for connect_instance_id and
-    # shared_deps_layer_arn -- scoped to that one object, read-only, same
-    # as connect-terraform's own load_test role scopes to a single dev
-    # state object rather than the whole tfstate bucket.
     resources = [
       "arn:aws:s3:::${var.connect_terraform_tfstate_bucket}/connect/dev/terraform.tfstate",
       "arn:aws:s3:::${var.connect_terraform_tfstate_bucket}",
@@ -308,8 +299,6 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
       "connect:Get*",
       "connect:List*",
     ]
-    # Same unscoped-to-instance-ARN reasoning as ConnectFlowModuleManage in
-    # deploy_permissions above -- this role has no Connect instance ID input.
     resources = ["*"]
   }
 
@@ -326,8 +315,8 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
       "iam:ListPolicyVersions",
     ]
     resources = [
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/lambda-asana-ticket-*",
-      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/lambda-asana-ticket-*",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/lambda-asana-*-${var.environment}",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/lambda-asana-*-${var.environment}",
     ]
   }
 
@@ -350,9 +339,6 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
     actions = [
       "secretsmanager:DescribeSecret",
     ]
-    # No GetSecretValue here -- terraform plan/validate never needs the
-    # actual secret value, only its metadata (matches deploy_permissions'
-    # SecretsManagerManage scope, read-only subset).
     resources = [
       "arn:aws:secretsmanager:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:secret:asana-api-token-*",
     ]
@@ -367,11 +353,7 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
 
   statement {
     sid    = "StateBucketAccess"
-    effect = "Allow"
-    # terraform plan still acquires the S3-native state lock (use_lockfile =
-    # true in backend.tf), which requires PutObject/DeleteObject on the
-    # .tflock file even for a read-only plan -- same as connect-terraform's
-    # pr_checks_permissions StateBucketAccess statement.
+    effect  = "Allow"
     actions = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:ListBucket"]
     resources = [
       "arn:aws:s3:::${var.tfstate_bucket}",

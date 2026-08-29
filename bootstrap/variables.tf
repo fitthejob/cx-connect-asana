@@ -12,3 +12,9 @@ variable "connect_terraform_tfstate_bucket" {
   description = "S3 bucket holding connect-terraform's Terraform state, read via this repo's terraform_remote_state data source"
   type        = string
 }
+
+variable "environment" {
+  description = "Environment suffix used in this repo's resource names (e.g. dev), scopes deploy_permissions' IAM resource patterns"
+  type        = string
+  default     = "dev"
+}
