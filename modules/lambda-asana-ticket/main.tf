@@ -22,6 +22,10 @@ resource "aws_iam_role_policy_attachment" "asana_ticket_basic" {
 
 resource "aws_secretsmanager_secret" "asana_api_token" {
   name = "asana-api-token-${var.environment}"
+
+  lifecycle {
+    prevent_destroy = true
+  }
 }
 
 resource "aws_secretsmanager_secret_version" "asana_api_token" {
