@@ -137,7 +137,10 @@
           },
           "VoiceAnalyticsBehavior": {
             "Enabled": "True",
-            "AnalyticsLanguage": "en-US"
+            "AnalyticsLanguage": "en-US",
+            "AnalyticsModes": [
+              "AutomatedInteraction"
+            ]
           }
         }
       },
@@ -182,7 +185,10 @@
           },
           "VoiceAnalyticsBehavior": {
             "Enabled": "True",
-            "AnalyticsLanguage": "en-US"
+            "AnalyticsLanguage": "en-US",
+            "AnalyticsModes": [
+              "AutomatedInteraction"
+            ]
           }
         }
       },

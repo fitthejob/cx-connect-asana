@@ -54,7 +54,11 @@ const disableRecording = new UpdateContactRecordingAndAnalyticsBehaviorActionBui
   "DisableRecording",
 )
   .voiceRecording([], "Disabled")
-  .voiceAnalyticsBehavior({ Enabled: "True", AnalyticsLanguage: "en-US" })
+  .voiceAnalyticsBehavior({
+    Enabled: "True",
+    AnalyticsLanguage: "en-US",
+    AnalyticsModes: ["AutomatedInteraction"],
+  })
   .next("PleaseWait")
   .onError("PleaseWait", "NoMatchingError")
   .onError("PleaseWait", "ChannelMismatch")
@@ -85,7 +89,11 @@ const enableRecording = new UpdateContactRecordingAndAnalyticsBehaviorActionBuil
   "EnableRecording",
 )
   .voiceRecording([], "Enabled")
-  .voiceAnalyticsBehavior({ Enabled: "True", AnalyticsLanguage: "en-US" })
+  .voiceAnalyticsBehavior({
+    Enabled: "True",
+    AnalyticsLanguage: "en-US",
+    AnalyticsModes: ["AutomatedInteraction"],
+  })
   .next("RecordingPause")
   .onError("RecordingPause", "NoMatchingError")
   .onError("RecordingPause", "ChannelMismatch")
