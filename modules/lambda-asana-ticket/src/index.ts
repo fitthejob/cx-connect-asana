@@ -10,6 +10,7 @@ interface ConnectLambdaEvent {
   Details?: {
     Parameters?: {
       IssueDescription?: string;
+      AdditionalDetail?: string;
     };
   };
 }
@@ -38,6 +39,7 @@ async function getAsanaApiToken(): Promise<string> {
 
 export const handler = async (event: ConnectLambdaEvent) => {
   const issueDescription = event.Details?.Parameters?.IssueDescription;
+  const additionalDetail = event.Details?.Parameters?.AdditionalDetail;
 
   if (!issueDescription) {
     throw new Error("Missing required parameter: IssueDescription");
@@ -52,6 +54,10 @@ export const handler = async (event: ConnectLambdaEvent) => {
 
   const apiToken = await getAsanaApiToken();
 
+  const notes = additionalDetail
+    ? `${issueDescription}\n\n${additionalDetail}`
+    : issueDescription;
+
   const response = await fetch(`${ASANA_API_BASE}/tasks`, {
     method: "POST",
     headers: {
@@ -61,7 +67,7 @@ export const handler = async (event: ConnectLambdaEvent) => {
     body: JSON.stringify({
       data: {
         name: `Self-service ticket: ${issueDescription.slice(0, 80)}`,
-        notes: issueDescription,
+        notes,
         projects: [projectGid],
       },
     }),

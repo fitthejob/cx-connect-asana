@@ -49,5 +49,5 @@ jobs:
             -var="environment=dev" \
             -var="asana_ticket_function_name=asana-ticket-dev" \
             -var="s3_bucket_lambda_artifacts=${{ vars.LAMBDA_ARTIFACTS_BUCKET }}" \
-            -var="asana_ticket_s3_key=asana-ticket/dev/placeholder.zip" \
+            -var="artifact_sha=${{ github.sha }}" \
             -var="asana_project_gid=${{ vars.ASANA_PROJECT_GID }}"

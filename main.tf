@@ -15,7 +15,7 @@ module "lambda_asana_ticket" {
   environment                = var.environment
   function_name              = var.asana_ticket_function_name
   s3_bucket_lambda_artifacts = var.s3_bucket_lambda_artifacts
-  s3_key                     = var.asana_ticket_s3_key
+  s3_key                     = "asana-ticket/dev/asana-ticket-${var.artifact_sha}.zip"
   layer_arn                  = data.terraform_remote_state.connect-terraform.outputs.shared_deps_layer_arn
   asana_project_gid          = var.asana_project_gid
 }

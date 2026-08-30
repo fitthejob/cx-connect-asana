@@ -8,8 +8,8 @@ variable "s3_bucket_lambda_artifacts" {
   type        = string
 }
 
-variable "asana_ticket_s3_key" {
-  description = "S3 key for the asana-ticket Lambda artifact zip"
+variable "artifact_sha" {
+  description = "Git commit SHA the asana-ticket Lambda artifact zip is keyed by"
   type        = string
 }
 
