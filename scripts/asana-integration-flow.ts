@@ -5,7 +5,6 @@ import {
   MessageParticipantActionBuilder,
   UpdateContactRecordingBehaviorActionBuilder,
   UpdateFlowLoggingBehaviorActionBuilder,
-  WaitActionBuilder,
 } from "connect-flow-builder";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -59,17 +58,12 @@ const disableRecording = new UpdateContactRecordingBehaviorActionBuilder(
   .next("PleaseWait")
   .build();
 
-const recordingWindow = new WaitActionBuilder("RecordingWindow")
-  .timeoutSeconds(20)
-  .onWaitCompleted("DisableRecording")
-  .build();
-
 const describeIssue = new MessageParticipantActionBuilder("DescribeIssue")
   .text(
     "Please describe the issue you are experiencing after the tone. " +
       "We'll record your description and open a support ticket.",
   )
-  .next("RecordingWindow")
+  .next("DisableRecording")
   .onError("DisableRecording")
   .build();
 
@@ -93,7 +87,6 @@ const flow = new FlowBuilder("AsanaIntegration")
   .startWith(enableLogging)
   .add(enableRecording)
   .add(describeIssue)
-  .add(recordingWindow)
   .add(disableRecording)
   .add(pleaseWait)
   .add(createTicket)
@@ -106,8 +99,9 @@ const definition = flow.toConnectDefinition() as unknown as {
     Identifier: string;
     Parameters?: {
       RecordingBehavior?: { IVRRecordingBehavior?: string };
-      TimeoutSeconds?: number;
-      TimeLimitSeconds?: number;
+      Text?: string;
+      SSML?: string;
+      TextToSpeechType?: string;
     };
     Transitions?: { Errors?: unknown[] };
   }>;
@@ -128,12 +122,21 @@ for (const action of definition.Actions) {
   ) {
     action.Parameters.RecordingBehavior.IVRRecordingBehavior = "Disabled";
   }
-  if (
-    action.Identifier === "RecordingWindow" &&
-    action.Parameters?.TimeoutSeconds !== undefined
-  ) {
-    action.Parameters.TimeLimitSeconds = action.Parameters.TimeoutSeconds;
-    delete action.Parameters.TimeoutSeconds;
+  if (action.Identifier === "DescribeIssue" && action.Parameters) {
+    // Two 10s breaks (Polly's SSML <break> max is 10s per element) hold the
+    // recording window open for ~20s while the caller speaks.
+    action.Parameters.SSML =
+      `<speak>${action.Parameters.Text}<break time="10s"/><break time="10s"/></speak>`;
+    action.Parameters.TextToSpeechType = "ssml";
+    delete action.Parameters.Text;
+  }
+  if (action.Identifier === "ReturnCaseNumber" && action.Parameters) {
+    action.Parameters.SSML =
+      `<speak>Your case number is <say-as interpret-as="characters">` +
+      `$.External.caseNumber</say-as>. Our support team will review and ` +
+      `respond to you as soon as possible. Thank you for calling.</speak>`;
+    action.Parameters.TextToSpeechType = "ssml";
+    delete action.Parameters.Text;
   }
 }
 

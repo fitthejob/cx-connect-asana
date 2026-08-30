@@ -28,17 +28,10 @@
         },
         "isFriendlyName": true
       },
-      "RecordingWindow": {
-        "position": {
-          "x": 1060,
-          "y": 20
-        },
-        "isFriendlyName": true
-      },
       "DisableRecording": {
         "position": {
           "x": 1060,
-          "y": 220
+          "y": 20
         },
         "isFriendlyName": true
       },
@@ -104,37 +97,11 @@
       "Identifier": "DescribeIssue",
       "Type": "MessageParticipant",
       "Parameters": {
-        "Text": "Please describe the issue you are experiencing after the tone. We'll record your description and open a support ticket."
-      },
-      "Transitions": {
-        "NextAction": "RecordingWindow",
-        "Errors": [
-          {
-            "NextAction": "DisableRecording",
-            "ErrorType": "NoMatchingError"
-          }
-        ]
-      }
-    },
-    {
-      "Identifier": "RecordingWindow",
-      "Type": "Wait",
-      "Parameters": {
-        "TimeLimitSeconds": 20
+        "SSML": "<speak>Please describe the issue you are experiencing after the tone. We'll record your description and open a support ticket.<break time=\"10s\"/><break time=\"10s\"/></speak>",
+        "TextToSpeechType": "ssml"
       },
       "Transitions": {
         "NextAction": "DisableRecording",
-        "Conditions": [
-          {
-            "NextAction": "DisableRecording",
-            "Condition": {
-              "Operator": "Equals",
-              "Operands": [
-                "WaitCompleted"
-              ]
-            }
-          }
-        ],
         "Errors": [
           {
             "NextAction": "DisableRecording",
@@ -201,7 +168,8 @@
       "Identifier": "ReturnCaseNumber",
       "Type": "MessageParticipant",
       "Parameters": {
-        "Text": "Your case number is $.External.caseNumber. Our support team will review and respond to you as soon as possible. Thank you for calling."
+        "SSML": "<speak>Your case number is <say-as interpret-as=\"characters\">$.External.caseNumber</say-as>. Our support team will review and respond to you as soon as possible. Thank you for calling.</speak>",
+        "TextToSpeechType": "ssml"
       },
       "Transitions": {
         "NextAction": "Disconnect",
