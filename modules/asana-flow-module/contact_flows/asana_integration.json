@@ -1,64 +1,71 @@
 {
   "Version": "2019-10-30",
-  "StartAction": "EnableRecording",
+  "StartAction": "EnableLogging",
   "Metadata": {
     "entryPointPosition": {
       "x": 20,
       "y": 20
     },
     "ActionMetadata": {
-      "EnableRecording": {
+      "EnableLogging": {
         "position": {
           "x": 280,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "DescribeIssue": {
+      "EnableRecording": {
         "position": {
           "x": 540,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "RecordingWindow": {
+      "DescribeIssue": {
         "position": {
           "x": 800,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "DisableRecording": {
-        "position": {
-          "x": 800,
-          "y": 220
-        },
-        "isFriendlyName": true
-      },
-      "PleaseWait": {
+      "RecordingWindow": {
         "position": {
           "x": 1060,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "CreateTicket": {
+      "DisableRecording": {
+        "position": {
+          "x": 1060,
+          "y": 220
+        },
+        "isFriendlyName": true
+      },
+      "PleaseWait": {
         "position": {
           "x": 1320,
           "y": 20
         },
         "isFriendlyName": true
       },
+      "CreateTicket": {
+        "position": {
+          "x": 1580,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
       "Disconnect": {
         "position": {
-          "x": 1320,
+          "x": 1580,
           "y": 220
         },
         "isFriendlyName": true
       },
       "ReturnCaseNumber": {
         "position": {
-          "x": 1580,
+          "x": 1840,
           "y": 20
         },
         "isFriendlyName": true
@@ -66,6 +73,16 @@
     }
   },
   "Actions": [
+    {
+      "Identifier": "EnableLogging",
+      "Type": "UpdateFlowLoggingBehavior",
+      "Parameters": {
+        "FlowLoggingBehavior": "Enabled"
+      },
+      "Transitions": {
+        "NextAction": "EnableRecording"
+      }
+    },
     {
       "Identifier": "EnableRecording",
       "Type": "UpdateContactRecordingBehavior",

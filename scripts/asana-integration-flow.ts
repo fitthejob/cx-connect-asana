@@ -4,6 +4,7 @@ import {
   InvokeLambdaFunctionActionBuilder,
   MessageParticipantActionBuilder,
   UpdateContactRecordingBehaviorActionBuilder,
+  UpdateFlowLoggingBehaviorActionBuilder,
   WaitActionBuilder,
 } from "connect-flow-builder";
 import { writeFileSync } from "node:fs";
@@ -81,8 +82,16 @@ const enableRecording = new UpdateContactRecordingBehaviorActionBuilder(
   .next("DescribeIssue")
   .build();
 
+const enableLogging = new UpdateFlowLoggingBehaviorActionBuilder(
+  "EnableLogging",
+)
+  .enabled()
+  .next("EnableRecording")
+  .build();
+
 const flow = new FlowBuilder("AsanaIntegration")
-  .startWith(enableRecording)
+  .startWith(enableLogging)
+  .add(enableRecording)
   .add(describeIssue)
   .add(recordingWindow)
   .add(disableRecording)
