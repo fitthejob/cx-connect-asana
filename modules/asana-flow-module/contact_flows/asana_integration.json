@@ -134,13 +134,6 @@
           "VoiceRecordingBehavior": {
             "RecordedParticipants": [],
             "IVRRecordingBehavior": "Enabled"
-          },
-          "VoiceAnalyticsBehavior": {
-            "Enabled": "True",
-            "AnalyticsLanguage": "en-US",
-            "AnalyticsModes": [
-              "AutomatedInteraction"
-            ]
           }
         }
       },
@@ -182,9 +175,6 @@
           "VoiceRecordingBehavior": {
             "RecordedParticipants": [],
             "IVRRecordingBehavior": "Disabled"
-          },
-          "VoiceAnalyticsBehavior": {
-            "Enabled": "False"
           }
         }
       },
