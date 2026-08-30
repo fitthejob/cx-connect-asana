@@ -184,11 +184,7 @@
             "IVRRecordingBehavior": "Disabled"
           },
           "VoiceAnalyticsBehavior": {
-            "Enabled": "True",
-            "AnalyticsLanguage": "en-US",
-            "AnalyticsModes": [
-              "AutomatedInteraction"
-            ]
+            "Enabled": "False"
           }
         }
       },
