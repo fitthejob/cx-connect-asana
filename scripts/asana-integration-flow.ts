@@ -101,7 +101,6 @@ const definition = flow.toConnectDefinition() as unknown as {
       RecordingBehavior?: { IVRRecordingBehavior?: string };
       Text?: string;
       SSML?: string;
-      TextToSpeechType?: string;
     };
     Transitions?: { Errors?: unknown[] };
   }>;
@@ -127,7 +126,6 @@ for (const action of definition.Actions) {
     // recording window open for ~20s while the caller speaks.
     action.Parameters.SSML =
       `<speak>${action.Parameters.Text}<break time="10s"/><break time="10s"/></speak>`;
-    action.Parameters.TextToSpeechType = "ssml";
     delete action.Parameters.Text;
   }
   if (action.Identifier === "ReturnCaseNumber" && action.Parameters) {
@@ -135,7 +133,6 @@ for (const action of definition.Actions) {
       `<speak>Your case number is <say-as interpret-as="characters">` +
       `$.External.caseNumber</say-as>. Our support team will review and ` +
       `respond to you as soon as possible. Thank you for calling.</speak>`;
-    action.Parameters.TextToSpeechType = "ssml";
     delete action.Parameters.Text;
   }
 }

@@ -97,8 +97,7 @@
       "Identifier": "DescribeIssue",
       "Type": "MessageParticipant",
       "Parameters": {
-        "SSML": "<speak>Please describe the issue you are experiencing after the tone. We'll record your description and open a support ticket.<break time=\"10s\"/><break time=\"10s\"/></speak>",
-        "TextToSpeechType": "ssml"
+        "SSML": "<speak>Please describe the issue you are experiencing after the tone. We'll record your description and open a support ticket.<break time=\"10s\"/><break time=\"10s\"/></speak>"
       },
       "Transitions": {
         "NextAction": "DisableRecording",
@@ -168,8 +167,7 @@
       "Identifier": "ReturnCaseNumber",
       "Type": "MessageParticipant",
       "Parameters": {
-        "SSML": "<speak>Your case number is <say-as interpret-as=\"characters\">$.External.caseNumber</say-as>. Our support team will review and respond to you as soon as possible. Thank you for calling.</speak>",
-        "TextToSpeechType": "ssml"
+        "SSML": "<speak>Your case number is <say-as interpret-as=\"characters\">$.External.caseNumber</say-as>. Our support team will review and respond to you as soon as possible. Thank you for calling.</speak>"
       },
       "Transitions": {
         "NextAction": "Disconnect",
