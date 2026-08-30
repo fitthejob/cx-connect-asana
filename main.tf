@@ -68,3 +68,18 @@ resource "aws_connect_lambda_function_association" "asana_ticket" {
   function_arn = module.lambda_asana_ticket.alias_arn
 }
 
+module "lex_speech_detection" {
+  source = "./modules/lex-speech-detection"
+
+  environment = var.environment
+}
+
+data "external" "lex_bot_association" {
+  program = ["bash", "${path.module}/scripts/lex/associate_lex_bot.sh"]
+
+  query = {
+    instance_id = data.terraform_remote_state.connect-terraform.outputs.connect_instance_id
+    alias_arn   = module.lex_speech_detection.bot_alias_arn
+  }
+}
+

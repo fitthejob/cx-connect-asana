@@ -158,6 +158,7 @@ data "aws_iam_policy_document" "deploy_permissions" {
     resources = [
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/lambda-asana-*-${var.environment}",
       "arn:aws:iam::${data.aws_caller_identity.current.account_id}:policy/lambda-asana-*-${var.environment}",
+      "arn:aws:iam::${data.aws_caller_identity.current.account_id}:role/asana-lex-speech-detection-role-${var.environment}",
     ]
   }
 
@@ -342,6 +343,57 @@ data "aws_iam_policy_document" "deploy_permissions" {
   }
 
   statement {
+    sid    = "LexV2Manage"
+    effect = "Allow"
+    actions = [
+      "lex:DescribeBot",
+      "lex:CreateBot",
+      "lex:UpdateBot",
+      "lex:DeleteBot",
+      "lex:ListBots",
+      "lex:TagResource",
+      "lex:UntagResource",
+      "lex:ListTagsForResource",
+      "lex:DescribeBotLocale",
+      "lex:CreateBotLocale",
+      "lex:UpdateBotLocale",
+      "lex:DeleteBotLocale",
+      "lex:ListBotLocales",
+      "lex:BuildBotLocale",
+      "lex:DescribeIntent",
+      "lex:CreateIntent",
+      "lex:UpdateIntent",
+      "lex:DeleteIntent",
+      "lex:ListIntents",
+      "lex:DescribeBotVersion",
+      "lex:CreateBotVersion",
+      "lex:DeleteBotVersion",
+      "lex:ListBotVersions",
+      "lex:CreateBotAlias",
+      "lex:UpdateBotAlias",
+      "lex:DeleteBotAlias",
+      "lex:DescribeBotAlias",
+      "lex:ListBotAliases",
+    ]
+    # lex:CreateBot's target doesn't exist before the call (the bot ID is
+    # assigned by AWS on creation), so this can't be scoped ahead of a first
+    # apply -- same justification connect-terraform uses for its own
+    # LexV2Manage statement.
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ConnectBotAssociation"
+    effect = "Allow"
+    actions = [
+      "connect:AssociateBot",
+      "connect:DisassociateBot",
+      "connect:ListBots",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
     sid       = "CallerIdentityForArnConstruction"
     effect    = "Allow"
     actions   = ["sts:GetCallerIdentity"]
@@ -518,6 +570,34 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
     effect    = "Allow"
     actions   = ["cloudwatch:ListTagsForResource"]
     resources = ["arn:aws:cloudwatch:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:alarm:lambda-asana-*"]
+  }
+
+  statement {
+    sid    = "LexV2ReadOnly"
+    effect = "Allow"
+    actions = [
+      "lex:DescribeBot",
+      "lex:ListBots",
+      "lex:DescribeBotLocale",
+      "lex:ListBotLocales",
+      "lex:DescribeIntent",
+      "lex:ListIntents",
+      "lex:DescribeBotVersion",
+      "lex:ListBotVersions",
+      "lex:DescribeBotAlias",
+      "lex:ListBotAliases",
+      "lex:ListTagsForResource",
+    ]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "ConnectBotAssociationReadOnly"
+    effect = "Allow"
+    actions = [
+      "connect:ListBots",
+    ]
+    resources = ["*"]
   }
 
   statement {

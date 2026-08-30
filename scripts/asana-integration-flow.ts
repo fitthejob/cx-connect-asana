@@ -1,4 +1,5 @@
 import {
+  ConnectParticipantWithLexBotActionBuilder,
   DisconnectParticipantActionBuilder,
   FlowBuilder,
   InvokeLambdaFunctionActionBuilder,
@@ -20,6 +21,9 @@ function requireEnv(name: string): string {
 
 const ASANA_TICKET_LAMBDA_ARN = requireEnv("ASANA_TICKET_LAMBDA_ARN");
 const BEEP_WAV_S3_URI = requireEnv("BEEP_WAV_S3_URI");
+const LEX_SPEECH_DETECTION_BOT_ALIAS_ARN = requireEnv(
+  "LEX_SPEECH_DETECTION_BOT_ALIAS_ARN",
+);
 
 const disconnect = new DisconnectParticipantActionBuilder("Disconnect").build();
 
@@ -74,9 +78,17 @@ const beep = new MessageParticipantActionBuilder("Beep")
   .onError("EnableRecording")
   .build();
 
-const recordingPause = new MessageParticipantActionBuilder("RecordingPause")
-  .text("placeholder")
-  .next("DisableRecording")
+const recordingPause = new ConnectParticipantWithLexBotActionBuilder(
+  "RecordingPause",
+)
+  .ssml(`<speak><break time="1s"/></speak>`)
+  .lexV2BotAliasArn(LEX_SPEECH_DETECTION_BOT_ALIAS_ARN)
+  .sessionAttribute("x-amz-lex:audio:start-timeout-ms:*:*", "4000")
+  .sessionAttribute("x-amz-lex:audio:end-timeout-ms:*:*", "2000")
+  .sessionAttribute("x-amz-lex:audio:max-length-ms:*:*", "30000")
+  .whenIntentEquals("CaptureIntent", "DisableRecording")
+  .onNoMatchingCondition("DisableRecording")
+  .onInputTimeLimitExceeded("DisableRecording")
   .onError("DisableRecording")
   .build();
 
@@ -129,12 +141,6 @@ for (const action of definition.Actions) {
       SourceType: "S3",
       MediaType: "Audio",
     };
-    delete action.Parameters.Text;
-  }
-  if (action.Identifier === "RecordingPause" && action.Parameters) {
-    // Two 10s breaks (Polly's SSML <break> max is 10s per element) hold the
-    // recording window open for ~20s while the caller speaks.
-    action.Parameters.SSML = `<speak><break time="10s"/><break time="10s"/></speak>`;
     delete action.Parameters.Text;
   }
   if (action.Identifier === "ReturnCaseNumber" && action.Parameters) {

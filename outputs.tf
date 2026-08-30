@@ -47,3 +47,8 @@ output "transcript_update_function_arn" {
   description = "asana-transcript-update Lambda ARN"
   value       = module.lambda_asana_transcript_update.function_arn
 }
+
+output "lex_speech_detection_bot_alias_arn" {
+  description = "Lex bot alias ARN for the speech-end-detection bot -- reference this from the Asana flow module's ConnectParticipantWithLexBot action"
+  value       = module.lex_speech_detection.bot_alias_arn
+}

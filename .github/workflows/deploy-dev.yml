@@ -105,11 +105,13 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply (Lambda + validation sandbox only)
+      - name: Terraform Apply (Lambda + validation sandbox + Lex only)
         run: |
           terraform apply -auto-approve \
             -target=module.lambda_asana_ticket \
             -target=module.asana_flow_module.aws_connect_contact_flow_module.validation_sandbox \
+            -target=module.lex_speech_detection \
+            -target=data.external.lex_bot_association \
             -var="environment=dev" \
             -var="asana_ticket_function_name=asana-ticket-dev" \
             -var="s3_bucket_lambda_artifacts=${{ vars.LAMBDA_ARTIFACTS_BUCKET }}" \
@@ -126,12 +128,14 @@ jobs:
           echo "asana_ticket_alias_arn=$(terraform output -raw asana_ticket_alias_arn)" >> "$GITHUB_OUTPUT"
           echo "instance_id=$(terraform output -raw connect_instance_id)" >> "$GITHUB_OUTPUT"
           echo "validation_sandbox_module_id=$(terraform output -raw validation_sandbox_module_id)" >> "$GITHUB_OUTPUT"
+          echo "lex_speech_detection_bot_alias_arn=$(terraform output -raw lex_speech_detection_bot_alias_arn)" >> "$GITHUB_OUTPUT"
 
       - name: Generate Asana flow module JSON
         run: npm run generate:asana-integration-flow
         env:
           ASANA_TICKET_LAMBDA_ARN: ${{ steps.tf-outputs.outputs.asana_ticket_alias_arn }}
           BEEP_WAV_S3_URI: ${{ vars.BEEP_WAV_S3_URI }}
+          LEX_SPEECH_DETECTION_BOT_ALIAS_ARN: ${{ steps.tf-outputs.outputs.lex_speech_detection_bot_alias_arn }}
 
       - name: Validate flow module against sandbox
         run: |

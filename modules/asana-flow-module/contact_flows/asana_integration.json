@@ -153,13 +153,40 @@
     },
     {
       "Identifier": "RecordingPause",
-      "Type": "MessageParticipant",
+      "Type": "ConnectParticipantWithLexBot",
       "Parameters": {
-        "SSML": "<speak><break time=\"10s\"/><break time=\"10s\"/></speak>"
+        "SSML": "<speak><break time=\"1s\"/></speak>",
+        "LexV2Bot": {
+          "AliasArn": "arn:aws:lex:us-east-1:084396578198:bot-alias/ABCDEF1234/TSTALIASID"
+        },
+        "LexSessionAttributes": {
+          "x-amz-lex:audio:start-timeout-ms:*:*": "4000",
+          "x-amz-lex:audio:end-timeout-ms:*:*": "2000",
+          "x-amz-lex:audio:max-length-ms:*:*": "30000"
+        }
       },
       "Transitions": {
         "NextAction": "DisableRecording",
+        "Conditions": [
+          {
+            "NextAction": "DisableRecording",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "CaptureIntent"
+              ]
+            }
+          }
+        ],
         "Errors": [
+          {
+            "NextAction": "DisableRecording",
+            "ErrorType": "NoMatchingCondition"
+          },
+          {
+            "NextAction": "DisableRecording",
+            "ErrorType": "InputTimeLimitExceeded"
+          },
           {
             "NextAction": "DisableRecording",
             "ErrorType": "NoMatchingError"
