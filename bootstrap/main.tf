@@ -343,6 +343,29 @@ data "aws_iam_policy_document" "deploy_permissions" {
   }
 
   statement {
+    sid       = "CallerIdentityForArnConstruction"
+    effect    = "Allow"
+    actions   = ["sts:GetCallerIdentity"]
+    resources = ["*"]
+  }
+}
+
+resource "aws_iam_policy" "deploy" {
+  name   = "cx-connect-asana-deploy-policy"
+  policy = data.aws_iam_policy_document.deploy_permissions.json
+}
+
+resource "aws_iam_role_policy_attachment" "deploy" {
+  role       = aws_iam_role.deploy.name
+  policy_arn = aws_iam_policy.deploy.arn
+}
+
+# Split out from deploy_permissions above because the combined document
+# exceeded IAM's 6144-char policy size limit -- same split connect-terraform
+# uses for its own oversized deploy policy (see modules/iam/main.tf's
+# aws_iam_policy.contact_center).
+data "aws_iam_policy_document" "deploy_permissions_lex" {
+  statement {
     sid    = "LexV2Manage"
     effect = "Allow"
     actions = [
@@ -392,23 +415,16 @@ data "aws_iam_policy_document" "deploy_permissions" {
     ]
     resources = ["*"]
   }
-
-  statement {
-    sid       = "CallerIdentityForArnConstruction"
-    effect    = "Allow"
-    actions   = ["sts:GetCallerIdentity"]
-    resources = ["*"]
-  }
 }
 
-resource "aws_iam_policy" "deploy" {
-  name   = "cx-connect-asana-deploy-policy"
-  policy = data.aws_iam_policy_document.deploy_permissions.json
+resource "aws_iam_policy" "deploy_lex" {
+  name   = "cx-connect-asana-deploy-lex-policy"
+  policy = data.aws_iam_policy_document.deploy_permissions_lex.json
 }
 
-resource "aws_iam_role_policy_attachment" "deploy" {
+resource "aws_iam_role_policy_attachment" "deploy_lex" {
   role       = aws_iam_role.deploy.name
-  policy_arn = aws_iam_policy.deploy.arn
+  policy_arn = aws_iam_policy.deploy_lex.arn
 }
 
 data "aws_iam_policy_document" "pr_checks_permissions" {
