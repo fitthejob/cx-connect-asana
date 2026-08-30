@@ -108,8 +108,7 @@ const definition = flow.toConnectDefinition() as unknown as {
 for (const action of definition.Actions) {
   if (
     (action.Identifier === "EnableRecording" ||
-      action.Identifier === "DisableRecording" ||
-      action.Identifier === "RecordingWindow") &&
+      action.Identifier === "DisableRecording") &&
     action.Transitions
   ) {
     delete action.Transitions.Errors;

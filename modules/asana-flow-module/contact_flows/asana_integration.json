@@ -117,6 +117,12 @@
               ]
             }
           }
+        ],
+        "Errors": [
+          {
+            "NextAction": "DisableRecording",
+            "ErrorType": "NoMatchingError"
+          }
         ]
       }
     },
