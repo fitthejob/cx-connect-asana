@@ -73,8 +73,11 @@ resource "aws_iam_policy" "recording_transcribe_transcribe_access" {
     Version = "2012-10-17"
     Statement = [
       {
-        Effect   = "Allow"
-        Action   = "transcribe:StartTranscriptionJob"
+        Effect = "Allow"
+        Action = [
+          "transcribe:StartTranscriptionJob",
+          "transcribe:TagResource",
+        ]
         Resource = "*"
       }
     ]
