@@ -271,6 +271,9 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "dynamodb:UntagResource",
       "dynamodb:DescribeTimeToLive",
       "dynamodb:UpdateTimeToLive",
+      "dynamodb:DescribeContinuousBackups",
+      "dynamodb:UpdateContinuousBackups",
+      "dynamodb:ListTagsOfResource",
     ]
     resources = [
       "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/contact-correlation-*",
@@ -284,6 +287,7 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "s3:GetBucketNotification",
       "s3:PutBucketNotification",
       "s3:GetBucketLocation",
+      "s3:ListBucket",
       "s3:GetObject",
       "s3:PutObject",
     ]
@@ -312,6 +316,7 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "events:ListTargetsByRule",
       "events:TagResource",
       "events:UntagResource",
+      "events:ListTagsForResource",
     ]
     resources = [
       "arn:aws:events:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:rule/lambda-asana-*",
@@ -327,6 +332,7 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "cloudwatch:DeleteAlarms",
       "cloudwatch:TagResource",
       "cloudwatch:UntagResource",
+      "cloudwatch:ListTagsForResource",
     ]
     resources = [
       "arn:aws:cloudwatch:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:alarm:lambda-asana-*",
@@ -464,6 +470,8 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
     actions = [
       "dynamodb:DescribeTable",
       "dynamodb:DescribeTimeToLive",
+      "dynamodb:DescribeContinuousBackups",
+      "dynamodb:ListTagsOfResource",
     ]
     resources = [
       "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/contact-correlation-*",
@@ -476,6 +484,7 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
     actions = [
       "s3:GetBucketNotification",
       "s3:GetBucketLocation",
+      "s3:ListBucket",
     ]
     resources = [
       "arn:aws:s3:::${var.recording_bucket_name}",
@@ -488,6 +497,7 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
     actions = [
       "events:DescribeRule",
       "events:ListTargetsByRule",
+      "events:ListTagsForResource",
     ]
     resources = [
       "arn:aws:events:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:rule/lambda-asana-*",
@@ -499,6 +509,13 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
     effect    = "Allow"
     actions   = ["cloudwatch:DescribeAlarms"]
     resources = ["*"]
+  }
+
+  statement {
+    sid       = "CloudWatchAlarmTagsReadOnly"
+    effect    = "Allow"
+    actions   = ["cloudwatch:ListTagsForResource"]
+    resources = ["arn:aws:cloudwatch:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:alarm:lambda-asana-*"]
   }
 
   statement {

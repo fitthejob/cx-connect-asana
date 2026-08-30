@@ -95,7 +95,11 @@ const flow = new FlowBuilder("AsanaIntegration")
 const definition = flow.toConnectDefinition() as unknown as {
   Actions: Array<{
     Identifier: string;
-    Parameters?: { RecordingBehavior?: { IVRRecordingBehavior?: string } };
+    Parameters?: {
+      RecordingBehavior?: { IVRRecordingBehavior?: string };
+      TimeoutSeconds?: number;
+      TimeLimitSeconds?: number;
+    };
     Transitions?: { Errors?: unknown[] };
   }>;
   Settings?: unknown;
@@ -104,7 +108,8 @@ const definition = flow.toConnectDefinition() as unknown as {
 for (const action of definition.Actions) {
   if (
     (action.Identifier === "EnableRecording" ||
-      action.Identifier === "DisableRecording") &&
+      action.Identifier === "DisableRecording" ||
+      action.Identifier === "RecordingWindow") &&
     action.Transitions
   ) {
     delete action.Transitions.Errors;
@@ -114,6 +119,13 @@ for (const action of definition.Actions) {
     action.Parameters?.RecordingBehavior
   ) {
     action.Parameters.RecordingBehavior.IVRRecordingBehavior = "Disabled";
+  }
+  if (
+    action.Identifier === "RecordingWindow" &&
+    action.Parameters?.TimeoutSeconds !== undefined
+  ) {
+    action.Parameters.TimeLimitSeconds = action.Parameters.TimeoutSeconds;
+    delete action.Parameters.TimeoutSeconds;
   }
 }
 

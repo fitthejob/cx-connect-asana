@@ -1,22 +1,64 @@
 {
   "Version": "2019-10-30",
-  "StartAction": "Greeting",
+  "StartAction": "EnableRecording",
   "Metadata": {
     "entryPointPosition": {
       "x": 20,
       "y": 20
     },
     "ActionMetadata": {
-      "Greeting": {
+      "EnableRecording": {
         "position": {
           "x": 280,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "Disconnect": {
+      "DescribeIssue": {
         "position": {
           "x": 540,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
+      "RecordingWindow": {
+        "position": {
+          "x": 800,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
+      "DisableRecording": {
+        "position": {
+          "x": 800,
+          "y": 220
+        },
+        "isFriendlyName": true
+      },
+      "PleaseWait": {
+        "position": {
+          "x": 1060,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
+      "CreateTicket": {
+        "position": {
+          "x": 1320,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
+      "Disconnect": {
+        "position": {
+          "x": 1320,
+          "y": 220
+        },
+        "isFriendlyName": true
+      },
+      "ReturnCaseNumber": {
+        "position": {
+          "x": 1580,
           "y": 20
         },
         "isFriendlyName": true
@@ -25,10 +67,118 @@
   },
   "Actions": [
     {
-      "Identifier": "Greeting",
+      "Identifier": "EnableRecording",
+      "Type": "UpdateContactRecordingBehavior",
+      "Parameters": {
+        "RecordingBehavior": {
+          "RecordedParticipants": [],
+          "IVRRecordingBehavior": "Enabled"
+        },
+        "AnalyticsBehavior": {
+          "Enabled": "True",
+          "AnalyticsLanguage": "en-US"
+        }
+      },
+      "Transitions": {
+        "NextAction": "DescribeIssue"
+      }
+    },
+    {
+      "Identifier": "DescribeIssue",
       "Type": "MessageParticipant",
       "Parameters": {
-        "Text": "Asana self-service module placeholder."
+        "Text": "Please describe the issue you are experiencing after the tone. We'll record your description and open a support ticket."
+      },
+      "Transitions": {
+        "NextAction": "RecordingWindow",
+        "Errors": [
+          {
+            "NextAction": "DisableRecording",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "RecordingWindow",
+      "Type": "Wait",
+      "Parameters": {
+        "TimeLimitSeconds": 20
+      },
+      "Transitions": {
+        "NextAction": "DisableRecording",
+        "Conditions": [
+          {
+            "NextAction": "DisableRecording",
+            "Condition": {
+              "Operator": "Equals",
+              "Operands": [
+                "WaitCompleted"
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "DisableRecording",
+      "Type": "UpdateContactRecordingBehavior",
+      "Parameters": {
+        "RecordingBehavior": {
+          "RecordedParticipants": [],
+          "IVRRecordingBehavior": "Disabled"
+        },
+        "AnalyticsBehavior": {
+          "Enabled": "True",
+          "AnalyticsLanguage": "en-US"
+        }
+      },
+      "Transitions": {
+        "NextAction": "PleaseWait"
+      }
+    },
+    {
+      "Identifier": "PleaseWait",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "Thank you. Please hold for a moment while we open a case for your issue."
+      },
+      "Transitions": {
+        "NextAction": "CreateTicket",
+        "Errors": [
+          {
+            "NextAction": "Disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "CreateTicket",
+      "Type": "InvokeLambdaFunction",
+      "Parameters": {
+        "InvocationTimeLimitSeconds": "8",
+        "LambdaFunctionARN": "arn:aws:lambda:us-east-1:084396578198:function:asana-ticket-dev:live",
+        "LambdaInvocationAttributes": {
+          "CustomerId": "$.Attributes.CustomerId",
+          "CallerAni": "$.CustomerEndpoint.Address"
+        }
+      },
+      "Transitions": {
+        "NextAction": "ReturnCaseNumber",
+        "Errors": [
+          {
+            "NextAction": "Disconnect",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "ReturnCaseNumber",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Text": "Your case number is $.External.caseNumber. Our support team will review and respond to you as soon as possible. Thank you for calling."
       },
       "Transitions": {
         "NextAction": "Disconnect",
