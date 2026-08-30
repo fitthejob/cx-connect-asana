@@ -63,3 +63,8 @@ module "lambda_asana_transcript_update" {
   asana_secret_arn           = module.lambda_asana_ticket.asana_secrets_arn
 }
 
+resource "aws_connect_lambda_function_association" "asana_ticket" {
+  instance_id  = data.terraform_remote_state.connect-terraform.outputs.connect_instance_id
+  function_arn = module.lambda_asana_ticket.alias_arn
+}
+
