@@ -105,10 +105,11 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
-      - name: Terraform Apply (Lambda only)
+      - name: Terraform Apply (Lambda + validation sandbox only)
         run: |
           terraform apply -auto-approve \
             -target=module.lambda_asana_ticket \
+            -target=module.asana_flow_module.aws_connect_contact_flow_module.validation_sandbox \
             -var="environment=dev" \
             -var="asana_ticket_function_name=asana-ticket-dev" \
             -var="s3_bucket_lambda_artifacts=${{ vars.LAMBDA_ARTIFACTS_BUCKET }}" \
@@ -119,15 +120,24 @@ jobs:
             -var="recording_bucket_name=${{ vars.RECORDING_BUCKET_NAME }}" \
             -var="transcript_update_function_name=asana-transcript-update-dev"
 
-      - name: Capture Lambda alias ARN
+      - name: Capture Terraform outputs
         id: tf-outputs
         run: |
           echo "asana_ticket_alias_arn=$(terraform output -raw asana_ticket_alias_arn)" >> "$GITHUB_OUTPUT"
+          echo "instance_id=$(terraform output -raw connect_instance_id)" >> "$GITHUB_OUTPUT"
+          echo "validation_sandbox_module_id=$(terraform output -raw validation_sandbox_module_id)" >> "$GITHUB_OUTPUT"
 
       - name: Generate Asana flow module JSON
         run: npm run generate:asana-integration-flow
         env:
           ASANA_TICKET_LAMBDA_ARN: ${{ steps.tf-outputs.outputs.asana_ticket_alias_arn }}
+
+      - name: Validate flow module against sandbox
+        run: |
+          aws connect update-contact-flow-module-content \
+            --instance-id "${{ steps.tf-outputs.outputs.instance_id }}" \
+            --contact-flow-module-id "${{ steps.tf-outputs.outputs.validation_sandbox_module_id }}" \
+            --content file://modules/asana-flow-module/contact_flows/asana_integration.json
 
       - name: Terraform Apply
         run: |
