@@ -91,10 +91,16 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "lambda:UntagResource",
       "lambda:GetFunctionEventInvokeConfig",
       "lambda:PutFunctionEventInvokeConfig",
+      "lambda:AddPermission",
+      "lambda:RemovePermission",
     ]
     resources = [
       "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*",
       "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*:*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-recording-transcribe-*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-recording-transcribe-*:*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-transcript-update-*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-transcript-update-*:*",
     ]
   }
 
@@ -166,7 +172,7 @@ data "aws_iam_policy_document" "deploy_permissions" {
       "sqs:ListQueueTags",
     ]
     resources = [
-      "arn:aws:sqs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:lambda-asana-ticket-*",
+      "arn:aws:sqs:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:lambda-asana-*",
     ]
   }
 
@@ -254,6 +260,80 @@ data "aws_iam_policy_document" "deploy_permissions" {
   }
 
   statement {
+    sid    = "DynamoDbTableManage"
+    effect = "Allow"
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:CreateTable",
+      "dynamodb:DeleteTable",
+      "dynamodb:UpdateTable",
+      "dynamodb:TagResource",
+      "dynamodb:UntagResource",
+      "dynamodb:DescribeTimeToLive",
+      "dynamodb:UpdateTimeToLive",
+    ]
+    resources = [
+      "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/contact-correlation-*",
+    ]
+  }
+
+  statement {
+    sid    = "RecordingBucketNotificationManage"
+    effect = "Allow"
+    actions = [
+      "s3:GetBucketNotification",
+      "s3:PutBucketNotification",
+      "s3:GetBucketLocation",
+      "s3:GetObject",
+      "s3:PutObject",
+    ]
+    resources = [
+      "arn:aws:s3:::${var.recording_bucket_name}",
+      "arn:aws:s3:::${var.recording_bucket_name}/*",
+    ]
+  }
+
+  statement {
+    sid       = "TranscribeManage"
+    effect    = "Allow"
+    actions   = ["transcribe:StartTranscriptionJob"]
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "EventBridgeManage"
+    effect = "Allow"
+    actions = [
+      "events:DescribeRule",
+      "events:PutRule",
+      "events:DeleteRule",
+      "events:PutTargets",
+      "events:RemoveTargets",
+      "events:ListTargetsByRule",
+      "events:TagResource",
+      "events:UntagResource",
+    ]
+    resources = [
+      "arn:aws:events:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:rule/lambda-asana-*",
+    ]
+  }
+
+  statement {
+    sid    = "CloudWatchAlarmManage"
+    effect = "Allow"
+    actions = [
+      "cloudwatch:DescribeAlarms",
+      "cloudwatch:PutMetricAlarm",
+      "cloudwatch:DeleteAlarms",
+      "cloudwatch:TagResource",
+      "cloudwatch:UntagResource",
+    ]
+    resources = [
+      "arn:aws:cloudwatch:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:alarm:lambda-asana-*",
+    ]
+  }
+
+  statement {
     sid       = "CallerIdentityForArnConstruction"
     effect    = "Allow"
     actions   = ["sts:GetCallerIdentity"]
@@ -288,6 +368,10 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
     resources = [
       "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*",
       "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-ticket-*:*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-recording-transcribe-*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-recording-transcribe-*:*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-transcript-update-*",
+      "arn:aws:lambda:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:function:asana-transcript-update-*:*",
     ]
   }
 
@@ -372,6 +456,49 @@ data "aws_iam_policy_document" "pr_checks_permissions" {
       "arn:aws:s3:::${var.connect_terraform_tfstate_bucket}/connect/dev/terraform.tfstate",
       "arn:aws:s3:::${var.connect_terraform_tfstate_bucket}",
     ]
+  }
+
+  statement {
+    sid    = "DynamoDbTableReadOnly"
+    effect = "Allow"
+    actions = [
+      "dynamodb:DescribeTable",
+      "dynamodb:DescribeTimeToLive",
+    ]
+    resources = [
+      "arn:aws:dynamodb:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:table/contact-correlation-*",
+    ]
+  }
+
+  statement {
+    sid    = "RecordingBucketReadOnly"
+    effect = "Allow"
+    actions = [
+      "s3:GetBucketNotification",
+      "s3:GetBucketLocation",
+    ]
+    resources = [
+      "arn:aws:s3:::${var.recording_bucket_name}",
+    ]
+  }
+
+  statement {
+    sid    = "EventBridgeReadOnly"
+    effect = "Allow"
+    actions = [
+      "events:DescribeRule",
+      "events:ListTargetsByRule",
+    ]
+    resources = [
+      "arn:aws:events:${data.aws_region.current.region}:${data.aws_caller_identity.current.account_id}:rule/lambda-asana-*",
+    ]
+  }
+
+  statement {
+    sid       = "CloudWatchAlarmReadOnly"
+    effect    = "Allow"
+    actions   = ["cloudwatch:DescribeAlarms"]
+    resources = ["*"]
   }
 
   statement {

@@ -44,6 +44,38 @@ jobs:
           aws s3 cp asana-ticket.zip \
             s3://${{ vars.LAMBDA_ARTIFACTS_BUCKET }}/asana-ticket/dev/asana-ticket-${{ github.sha }}.zip
 
+      - name: Install & build recording-transcribe
+        working-directory: modules/lambda-recording-transcribe/src
+        run: |
+          npm ci
+          npm run build
+
+      - name: Zip recording-transcribe
+        working-directory: modules/lambda-recording-transcribe/src/dist
+        run: zip -r ../recording-transcribe.zip .
+
+      - name: Upload recording-transcribe artifact
+        working-directory: modules/lambda-recording-transcribe/src
+        run: |
+          aws s3 cp recording-transcribe.zip \
+            s3://${{ vars.LAMBDA_ARTIFACTS_BUCKET }}/recording-transcribe/dev/recording-transcribe-${{ github.sha }}.zip
+
+      - name: Install & build transcript-update
+        working-directory: modules/lambda-asana-transcript-update/src
+        run: |
+          npm ci
+          npm run build
+
+      - name: Zip transcript-update
+        working-directory: modules/lambda-asana-transcript-update/src/dist
+        run: zip -r ../transcript-update.zip .
+
+      - name: Upload transcript-update artifact
+        working-directory: modules/lambda-asana-transcript-update/src
+        run: |
+          aws s3 cp transcript-update.zip \
+            s3://${{ vars.LAMBDA_ARTIFACTS_BUCKET }}/transcript-update/dev/transcript-update-${{ github.sha }}.zip
+
   deploy-dev:
     needs: build-artifact
     runs-on: ubuntu-latest
@@ -52,6 +84,14 @@ jobs:
       contents: read
     steps:
       - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install root dependencies
+        run: npm ci
 
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
@@ -65,6 +105,30 @@ jobs:
       - name: Terraform Init
         run: terraform init
 
+      - name: Terraform Apply (Lambda only)
+        run: |
+          terraform apply -auto-approve \
+            -target=module.lambda_asana_ticket \
+            -var="environment=dev" \
+            -var="asana_ticket_function_name=asana-ticket-dev" \
+            -var="s3_bucket_lambda_artifacts=${{ vars.LAMBDA_ARTIFACTS_BUCKET }}" \
+            -var="artifact_sha=${{ github.sha }}" \
+            -var="asana_project_gid=${{ vars.ASANA_PROJECT_GID }}" \
+            -var="contact_correlation_table_name=contact-correlation-dev" \
+            -var="recording_transcribe_function_name=asana-recording-transcribe-dev" \
+            -var="recording_bucket_name=${{ vars.RECORDING_BUCKET_NAME }}" \
+            -var="transcript_update_function_name=asana-transcript-update-dev"
+
+      - name: Capture Lambda alias ARN
+        id: tf-outputs
+        run: |
+          echo "asana_ticket_alias_arn=$(terraform output -raw asana_ticket_alias_arn)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate Asana flow module JSON
+        run: npm run generate:asana-integration-flow
+        env:
+          ASANA_TICKET_LAMBDA_ARN: ${{ steps.tf-outputs.outputs.asana_ticket_alias_arn }}
+
       - name: Terraform Apply
         run: |
           terraform apply -auto-approve \
@@ -72,4 +136,8 @@ jobs:
             -var="asana_ticket_function_name=asana-ticket-dev" \
             -var="s3_bucket_lambda_artifacts=${{ vars.LAMBDA_ARTIFACTS_BUCKET }}" \
             -var="artifact_sha=${{ github.sha }}" \
-            -var="asana_project_gid=${{ vars.ASANA_PROJECT_GID }}"
+            -var="asana_project_gid=${{ vars.ASANA_PROJECT_GID }}" \
+            -var="contact_correlation_table_name=contact-correlation-dev" \
+            -var="recording_transcribe_function_name=asana-recording-transcribe-dev" \
+            -var="recording_bucket_name=${{ vars.RECORDING_BUCKET_NAME }}" \
+            -var="transcript_update_function_name=asana-transcript-update-dev"

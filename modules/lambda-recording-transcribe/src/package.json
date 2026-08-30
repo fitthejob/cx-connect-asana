@@ -1,5 +1,5 @@
 {
-  "name": "asana-ticket",
+  "name": "recording-transcribe",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -13,7 +13,7 @@
   "type": "commonjs",
   "dependencies": {},
   "devDependencies": {
-    "@aws-sdk/client-secrets-manager": "^3.1104.0",
+    "@aws-sdk/client-transcribe": "^3.1104.0",
     "@aws-sdk/client-dynamodb": "^3.1104.0",
     "@aws-sdk/lib-dynamodb": "^3.1104.0",
     "@types/node": "^26.1.2",

@@ -1,13 +1,10 @@
 import {
-  ConnectParticipantWithLexBotActionBuilder,
   DisconnectParticipantActionBuilder,
   FlowBuilder,
-  GetParticipantInputActionBuilder,
   InvokeLambdaFunctionActionBuilder,
-  LoopActionBuilder,
   MessageParticipantActionBuilder,
-  UpdateContactAttributesActionBuilder,
-  equalsCondition,
+  UpdateContactRecordingBehaviorActionBuilder,
+  WaitActionBuilder,
 } from "connect-flow-builder";
 import { writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -22,7 +19,6 @@ function requireEnv(name: string): string {
 }
 
 const ASANA_TICKET_LAMBDA_ARN = requireEnv("ASANA_TICKET_LAMBDA_ARN");
-const LEX_BOT_ALIAS_ARN = requireEnv("LEX_BOT_ALIAS_ARN");
 
 const disconnect = new DisconnectParticipantActionBuilder("Disconnect").build();
 
@@ -38,133 +34,88 @@ const returnCaseNumber = new MessageParticipantActionBuilder("ReturnCaseNumber")
 const createTicket = new InvokeLambdaFunctionActionBuilder("CreateTicket")
   .lambdaArn(ASANA_TICKET_LAMBDA_ARN)
   .timeLimitSeconds(8)
-  .invocationAttribute("IssueDescription", "$.Attributes.IssueDescription")
-  .invocationAttribute("AdditionalDetail", "$.Attributes.AdditionalDetail")
+  .invocationAttribute("CustomerId", "$.Attributes.CustomerId")
+  .invocationAttribute("CallerAni", "$.CustomerEndpoint.Address")
   .next("ReturnCaseNumber")
   .onError("Disconnect")
   .build();
 
-const forwardingMessage = new MessageParticipantActionBuilder(
-  "ForwardingMessage",
-)
+const pleaseWait = new MessageParticipantActionBuilder("PleaseWait")
   .text(
-    "Thank you. I have recorded the issue you described and am forwarding " +
-      "it to our support team. Please hold for a case number.",
+    "Thank you. Please hold for a moment while we open a case for your " +
+      "issue.",
   )
   .next("CreateTicket")
   .onError("Disconnect")
   .build();
 
-const saveAdditionalDetail = new UpdateContactAttributesActionBuilder(
-  "SaveAdditionalDetail",
+const disableRecording = new UpdateContactRecordingBehaviorActionBuilder(
+  "DisableRecording",
 )
-  .targetCurrent()
-  .attribute("AdditionalDetail", "$.Lex.Slots.IssueDescription")
-  .next("ForwardingMessage")
-  .onError("ForwardingMessage")
+  .recordParticipants()
+  .enableIvrRecording()
+  .analyticsEnabled("en-US")
+  .next("PleaseWait")
   .build();
 
-const captureAdditionalIssue = new ConnectParticipantWithLexBotActionBuilder(
-  "CaptureAdditionalIssue",
-)
-  .text("Okay, what else can we add to your ticket?")
-  .lexV2BotAliasArn(LEX_BOT_ALIAS_ARN)
-  .whenIntentEquals("DescribeIssueIntent", "SaveAdditionalDetail")
-  .onInputTimeLimitExceeded("ForwardingMessage")
-  .onNoMatchingCondition("ForwardingMessage")
-  .onError("ForwardingMessage")
+const recordingWindow = new WaitActionBuilder("RecordingWindow")
+  .timeoutSeconds(20)
+  .onWaitCompleted("DisableRecording")
   .build();
 
-const askAnythingElse = new GetParticipantInputActionBuilder(
-  "AskAnythingElse",
-)
+const describeIssue = new MessageParticipantActionBuilder("DescribeIssue")
   .text(
-    "Okay, thank you. I have recorded your issue. Is there anything else " +
-      "you would like to add? Please answer yes or no.",
+    "Please describe the issue you are experiencing after the tone. " +
+      "We'll record your description and open a support ticket.",
   )
-  .inputTimeLimitSeconds(5)
-  .when(equalsCondition("yes"), "CaptureAdditionalIssue")
-  .when(equalsCondition("no"), "ForwardingMessage")
-  .next("ForwardingMessage")
-  .onError("ForwardingMessage", "NoMatchingCondition")
-  .onError("ForwardingMessage", "InputTimeLimitExceeded")
-  .onError("ForwardingMessage")
+  .next("RecordingWindow")
+  .onError("DisableRecording")
   .build();
 
-const saveIssueDescription = new UpdateContactAttributesActionBuilder(
-  "SaveIssueDescription",
+const enableRecording = new UpdateContactRecordingBehaviorActionBuilder(
+  "EnableRecording",
 )
-  .targetCurrent()
-  .attribute("IssueDescription", "$.Lex.Slots.IssueDescription")
-  .attribute("AdditionalDetail", "")
-  .next("AskAnythingElse")
-  .onError("AskAnythingElse")
-  .build();
-
-const retryLoop = new LoopActionBuilder("RetryLoop")
-  .loopCount(2)
-  .whenContinueLooping("RetryDescribeIssue")
-  .whenDoneLooping("GeneralQueueTransfer")
-  .build();
-
-const generalQueueTransfer = new MessageParticipantActionBuilder(
-  "GeneralQueueTransfer",
-)
-  .text(
-    "We're having trouble hearing your response. Let's connect you with " +
-      "an agent who can help.",
-  )
-  .next("Disconnect")
-  .onError("Disconnect")
-  .build();
-
-const retryDescribeIssue = new ConnectParticipantWithLexBotActionBuilder(
-  "RetryDescribeIssue",
-)
-  .text(
-    "Sorry, it seems nothing was said. If you would like to continue " +
-      "opening a ticket, please describe your issue.",
-  )
-  .lexV2BotAliasArn(LEX_BOT_ALIAS_ARN)
-  .whenIntentEquals("DescribeIssueIntent", "SaveIssueDescription")
-  .onInputTimeLimitExceeded("RetryLoop")
-  .onNoMatchingCondition("RetryLoop")
-  .onError("RetryLoop")
-  .build();
-
-const describeIssue = new ConnectParticipantWithLexBotActionBuilder(
-  "DescribeIssue",
-)
-  .text(
-    "Please tell us the issue you are experiencing and need help with. " +
-      "We'll open a ticket and get started on solving your issue.",
-  )
-  .lexV2BotAliasArn(LEX_BOT_ALIAS_ARN)
-  .whenIntentEquals("DescribeIssueIntent", "SaveIssueDescription")
-  .onInputTimeLimitExceeded("RetryLoop")
-  .onNoMatchingCondition("RetryLoop")
-  .onError("RetryLoop")
+  .recordParticipants()
+  .enableIvrRecording()
+  .analyticsEnabled("en-US")
+  .next("DescribeIssue")
   .build();
 
 const flow = new FlowBuilder("AsanaIntegration")
-  .startWith(describeIssue)
-  .add(retryLoop)
-  .add(retryDescribeIssue)
-  .add(generalQueueTransfer)
-  .add(saveIssueDescription)
-  .add(askAnythingElse)
-  .add(captureAdditionalIssue)
-  .add(saveAdditionalDetail)
-  .add(forwardingMessage)
+  .startWith(enableRecording)
+  .add(describeIssue)
+  .add(recordingWindow)
+  .add(disableRecording)
+  .add(pleaseWait)
   .add(createTicket)
   .add(returnCaseNumber)
   .add(disconnect)
   .build();
 
-const definition = flow.toConnectDefinition() as unknown as Record<
-  string,
-  unknown
->;
+const definition = flow.toConnectDefinition() as unknown as {
+  Actions: Array<{
+    Identifier: string;
+    Parameters?: { RecordingBehavior?: { IVRRecordingBehavior?: string } };
+    Transitions?: { Errors?: unknown[] };
+  }>;
+  Settings?: unknown;
+};
+
+for (const action of definition.Actions) {
+  if (
+    (action.Identifier === "EnableRecording" ||
+      action.Identifier === "DisableRecording") &&
+    action.Transitions
+  ) {
+    delete action.Transitions.Errors;
+  }
+  if (
+    action.Identifier === "DisableRecording" &&
+    action.Parameters?.RecordingBehavior
+  ) {
+    action.Parameters.RecordingBehavior.IVRRecordingBehavior = "Disabled";
+  }
+}
 
 if (!definition.Settings) {
   definition.Settings = {

@@ -17,3 +17,23 @@ output "asana_secrets_arn" {
   description = "Secrets Manager secret ARN holding the Asana API token -- populated out-of-band"
   value       = module.lambda_asana_ticket.asana_secrets_arn
 }
+
+output "contact_correlation_table_name" {
+  description = "DynamoDB table name for contactId -> Asana task GID correlation -- referenced by Lambda #1 and Lambda #2"
+  value       = module.contact_correlation_table.table_name
+}
+
+output "contact_correlation_table_arn" {
+  description = "DynamoDB table ARN for contactId -> Asana task GID correlation"
+  value       = module.contact_correlation_table.table_arn
+}
+
+output "recording_transcribe_function_arn" {
+  description = "recording-transcribe Lambda ARN"
+  value       = module.lambda_recording_transcribe.function_arn
+}
+
+output "transcript_update_function_arn" {
+  description = "asana-transcript-update Lambda ARN"
+  value       = module.lambda_asana_transcript_update.function_arn
+}

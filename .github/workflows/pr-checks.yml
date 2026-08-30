@@ -50,4 +50,8 @@ jobs:
             -var="asana_ticket_function_name=asana-ticket-dev" \
             -var="s3_bucket_lambda_artifacts=${{ vars.LAMBDA_ARTIFACTS_BUCKET }}" \
             -var="artifact_sha=${{ github.sha }}" \
-            -var="asana_project_gid=${{ vars.ASANA_PROJECT_GID }}"
+            -var="asana_project_gid=${{ vars.ASANA_PROJECT_GID }}" \
+            -var="contact_correlation_table_name=contact-correlation-dev" \
+            -var="recording_transcribe_function_name=asana-recording-transcribe-dev" \
+            -var="recording_bucket_name=${{ vars.RECORDING_BUCKET_NAME }}" \
+            -var="transcript_update_function_name=asana-transcript-update-dev"

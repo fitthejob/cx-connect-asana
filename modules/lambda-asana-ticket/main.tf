@@ -56,6 +56,25 @@ resource "aws_iam_role_policy_attachment" "asana_tickets_secrets_access" {
   policy_arn = aws_iam_policy.asana_tickets_secrets_access.arn
 }
 
+resource "aws_iam_policy" "asana_ticket_correlation_table_access" {
+  name = "lambda-asana-ticket-correlation-policy-${var.environment}"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect   = "Allow"
+        Action   = "dynamodb:PutItem"
+        Resource = var.correlation_table_arn
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "asana_ticket_correlation_table_access" {
+  role       = aws_iam_role.asana_ticket.name
+  policy_arn = aws_iam_policy.asana_ticket_correlation_table_access.arn
+}
+
 resource "aws_sqs_queue" "asana_ticket_dlq" {
   name                    = "lambda-asana-ticket-dlq-${var.environment}"
   sqs_managed_sse_enabled = true
@@ -92,8 +111,9 @@ resource "aws_lambda_function" "asana_ticket" {
 
   environment {
     variables = {
-      ASANA_SECRET_ARN  = aws_secretsmanager_secret.asana_api_token.arn
-      ASANA_PROJECT_GID = var.asana_project_gid
+      ASANA_SECRET_ARN       = aws_secretsmanager_secret.asana_api_token.arn
+      ASANA_PROJECT_GID      = var.asana_project_gid
+      CORRELATION_TABLE_NAME = var.correlation_table_name
     }
   }
 

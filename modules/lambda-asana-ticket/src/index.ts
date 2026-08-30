@@ -2,15 +2,27 @@ import {
   SecretsManagerClient,
   GetSecretValueCommand,
 } from "@aws-sdk/client-secrets-manager";
+import {
+  DynamoDBClient,
+} from "@aws-sdk/client-dynamodb";
+import {
+  DynamoDBDocumentClient,
+  PutCommand,
+} from "@aws-sdk/lib-dynamodb";
 
 const ASANA_API_BASE = "https://app.asana.com/api/1.0";
+const CORRELATION_TTL_SECONDS = 48 * 60 * 60;
 const secretsClient = new SecretsManagerClient({});
+const ddbClient = DynamoDBDocumentClient.from(new DynamoDBClient({}));
 
 interface ConnectLambdaEvent {
   Details?: {
+    ContactData?: {
+      ContactId?: string;
+    };
     Parameters?: {
-      IssueDescription?: string;
-      AdditionalDetail?: string;
+      CustomerId?: string;
+      CallerAni?: string;
     };
   };
 }
@@ -38,11 +50,12 @@ async function getAsanaApiToken(): Promise<string> {
 }
 
 export const handler = async (event: ConnectLambdaEvent) => {
-  const issueDescription = event.Details?.Parameters?.IssueDescription;
-  const additionalDetail = event.Details?.Parameters?.AdditionalDetail;
+  const contactId = event.Details?.ContactData?.ContactId;
+  const customerId = event.Details?.Parameters?.CustomerId;
+  const callerAni = event.Details?.Parameters?.CallerAni;
 
-  if (!issueDescription) {
-    throw new Error("Missing required parameter: IssueDescription");
+  if (!contactId) {
+    throw new Error("Missing required field: Details.ContactData.ContactId");
   }
 
   const projectGid = process.env.ASANA_PROJECT_GID;
@@ -52,11 +65,22 @@ export const handler = async (event: ConnectLambdaEvent) => {
     );
   }
 
+  const correlationTableName = process.env.CORRELATION_TABLE_NAME;
+  if (!correlationTableName) {
+    throw new Error(
+      "Missing required environment configuration: CORRELATION_TABLE_NAME",
+    );
+  }
+
   const apiToken = await getAsanaApiToken();
 
-  const notes = additionalDetail
-    ? `${issueDescription}\n\n${additionalDetail}`
-    : issueDescription;
+  const notesLines = ["Transcription pending..."];
+  if (customerId) {
+    notesLines.push(`Customer ID: ${customerId}`);
+  }
+  if (callerAni) {
+    notesLines.push(`Caller ANI: ${callerAni}`);
+  }
 
   const response = await fetch(`${ASANA_API_BASE}/tasks`, {
     method: "POST",
@@ -66,8 +90,8 @@ export const handler = async (event: ConnectLambdaEvent) => {
     },
     body: JSON.stringify({
       data: {
-        name: `Self-service ticket: ${issueDescription.slice(0, 80)}`,
-        notes,
+        name: `Self-service ticket: ${customerId ?? contactId}`,
+        notes: notesLines.join("\n"),
         projects: [projectGid],
       },
     }),
@@ -79,8 +103,22 @@ export const handler = async (event: ConnectLambdaEvent) => {
   }
 
   const result = (await response.json()) as AsanaCreateTaskResponse;
+  const taskGid = result.data.gid;
+
+  await ddbClient.send(
+    new PutCommand({
+      TableName: correlationTableName,
+      Item: {
+        contactId,
+        asanaTaskGid: taskGid,
+        expiresAt: Math.floor(Date.now() / 1000) + CORRELATION_TTL_SECONDS,
+        ...(customerId ? { customerId } : {}),
+        ...(callerAni ? { callerAni } : {}),
+      },
+    }),
+  );
 
   return {
-    caseNumber: result.data.gid,
+    caseNumber: taskGid,
   };
 };

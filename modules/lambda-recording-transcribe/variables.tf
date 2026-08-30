@@ -4,7 +4,7 @@ variable "environment" {
 }
 
 variable "function_name" {
-  description = "Name of the asana-ticket Lambda"
+  description = "Name of the recording-transcribe Lambda"
   type        = string
 }
 
@@ -14,7 +14,7 @@ variable "s3_bucket_lambda_artifacts" {
 }
 
 variable "s3_key" {
-  description = "S3 key for the asana-ticket Lambda artifact zip"
+  description = "S3 key for the recording-transcribe Lambda artifact zip"
   type        = string
 }
 
@@ -23,8 +23,13 @@ variable "layer_arn" {
   type        = string
 }
 
-variable "asana_project_gid" {
-  description = "Asana project GID that self-service tickets are created in"
+variable "recording_bucket_name" {
+  description = "S3 bucket Amazon Connect writes call recordings to"
+  type        = string
+}
+
+variable "recording_bucket_prefix" {
+  description = "S3 key prefix to scope the trigger to IVR-only recordings"
   type        = string
 }
 

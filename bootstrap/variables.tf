@@ -18,3 +18,8 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "recording_bucket_name" {
+  description = "S3 bucket Amazon Connect writes call recordings to -- owned/created by Connect itself, not Terraform-managed in connect-terraform"
+  type        = string
+}
