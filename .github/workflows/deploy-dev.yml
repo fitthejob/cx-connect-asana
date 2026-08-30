@@ -135,6 +135,7 @@ jobs:
       - name: Validate flow module against sandbox
         run: |
           aws connect update-contact-flow-module-content \
+            --cli-error-format json \
             --instance-id "${{ steps.tf-outputs.outputs.instance_id }}" \
             --contact-flow-module-id "${{ steps.tf-outputs.outputs.validation_sandbox_module_id }}" \
             --content file://modules/asana-flow-module/contact_flows/asana_integration.json
