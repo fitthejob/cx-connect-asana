@@ -131,6 +131,7 @@ jobs:
         run: npm run generate:asana-integration-flow
         env:
           ASANA_TICKET_LAMBDA_ARN: ${{ steps.tf-outputs.outputs.asana_ticket_alias_arn }}
+          BEEP_WAV_S3_URI: ${{ vars.BEEP_WAV_S3_URI }}
 
       - name: Validate flow module against sandbox
         run: |

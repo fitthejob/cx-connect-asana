@@ -14,51 +14,65 @@
         },
         "isFriendlyName": true
       },
-      "EnableRecording": {
+      "DescribeIssue": {
         "position": {
           "x": 540,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "DescribeIssue": {
+      "Beep": {
         "position": {
           "x": 800,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "DisableRecording": {
+      "EnableRecording": {
         "position": {
           "x": 1060,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "PleaseWait": {
+      "RecordingPause": {
         "position": {
           "x": 1320,
           "y": 20
         },
         "isFriendlyName": true
       },
-      "CreateTicket": {
+      "DisableRecording": {
         "position": {
           "x": 1580,
           "y": 20
         },
         "isFriendlyName": true
       },
+      "PleaseWait": {
+        "position": {
+          "x": 1840,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
+      "CreateTicket": {
+        "position": {
+          "x": 2100,
+          "y": 20
+        },
+        "isFriendlyName": true
+      },
       "Disconnect": {
         "position": {
-          "x": 1580,
+          "x": 2100,
           "y": 220
         },
         "isFriendlyName": true
       },
       "ReturnCaseNumber": {
         "position": {
-          "x": 1840,
+          "x": 2360,
           "y": 20
         },
         "isFriendlyName": true
@@ -73,23 +87,6 @@
         "FlowLoggingBehavior": "Enabled"
       },
       "Transitions": {
-        "NextAction": "EnableRecording"
-      }
-    },
-    {
-      "Identifier": "EnableRecording",
-      "Type": "UpdateContactRecordingBehavior",
-      "Parameters": {
-        "RecordingBehavior": {
-          "RecordedParticipants": [],
-          "IVRRecordingBehavior": "Enabled"
-        },
-        "AnalyticsBehavior": {
-          "Enabled": "True",
-          "AnalyticsLanguage": "en-US"
-        }
-      },
-      "Transitions": {
         "NextAction": "DescribeIssue"
       }
     },
@@ -97,7 +94,72 @@
       "Identifier": "DescribeIssue",
       "Type": "MessageParticipant",
       "Parameters": {
-        "SSML": "<speak>Please describe the issue you are experiencing after the tone. We'll record your description and open a support ticket.<break time=\"10s\"/><break time=\"10s\"/></speak>"
+        "Text": "Please describe the issue you are experiencing. We'll record your description and open a support ticket."
+      },
+      "Transitions": {
+        "NextAction": "Beep",
+        "Errors": [
+          {
+            "NextAction": "Beep",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "Beep",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "Media": {
+          "Uri": "https://amazon-connect-866e38e51ca5.s3.amazonaws.com/prompts/beep.wav",
+          "SourceType": "S3",
+          "MediaType": "Audio"
+        }
+      },
+      "Transitions": {
+        "NextAction": "EnableRecording",
+        "Errors": [
+          {
+            "NextAction": "EnableRecording",
+            "ErrorType": "NoMatchingError"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "EnableRecording",
+      "Type": "UpdateContactRecordingAndAnalyticsBehavior",
+      "Parameters": {
+        "VoiceBehavior": {
+          "VoiceRecordingBehavior": {
+            "RecordedParticipants": [],
+            "IVRRecordingBehavior": "Enabled"
+          },
+          "VoiceAnalyticsBehavior": {
+            "Enabled": "True",
+            "AnalyticsLanguage": "en-US"
+          }
+        }
+      },
+      "Transitions": {
+        "NextAction": "RecordingPause",
+        "Errors": [
+          {
+            "NextAction": "RecordingPause",
+            "ErrorType": "NoMatchingError"
+          },
+          {
+            "NextAction": "RecordingPause",
+            "ErrorType": "ChannelMismatch"
+          }
+        ]
+      }
+    },
+    {
+      "Identifier": "RecordingPause",
+      "Type": "MessageParticipant",
+      "Parameters": {
+        "SSML": "<speak><break time=\"10s\"/><break time=\"10s\"/></speak>"
       },
       "Transitions": {
         "NextAction": "DisableRecording",
@@ -111,19 +173,31 @@
     },
     {
       "Identifier": "DisableRecording",
-      "Type": "UpdateContactRecordingBehavior",
+      "Type": "UpdateContactRecordingAndAnalyticsBehavior",
       "Parameters": {
-        "RecordingBehavior": {
-          "RecordedParticipants": [],
-          "IVRRecordingBehavior": "Disabled"
-        },
-        "AnalyticsBehavior": {
-          "Enabled": "True",
-          "AnalyticsLanguage": "en-US"
+        "VoiceBehavior": {
+          "VoiceRecordingBehavior": {
+            "RecordedParticipants": [],
+            "IVRRecordingBehavior": "Disabled"
+          },
+          "VoiceAnalyticsBehavior": {
+            "Enabled": "True",
+            "AnalyticsLanguage": "en-US"
+          }
         }
       },
       "Transitions": {
-        "NextAction": "PleaseWait"
+        "NextAction": "PleaseWait",
+        "Errors": [
+          {
+            "NextAction": "PleaseWait",
+            "ErrorType": "NoMatchingError"
+          },
+          {
+            "NextAction": "PleaseWait",
+            "ErrorType": "ChannelMismatch"
+          }
+        ]
       }
     },
     {

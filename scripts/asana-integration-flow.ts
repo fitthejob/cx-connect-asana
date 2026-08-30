@@ -3,7 +3,7 @@ import {
   FlowBuilder,
   InvokeLambdaFunctionActionBuilder,
   MessageParticipantActionBuilder,
-  UpdateContactRecordingBehaviorActionBuilder,
+  UpdateContactRecordingAndAnalyticsBehaviorActionBuilder,
   UpdateFlowLoggingBehaviorActionBuilder,
 } from "connect-flow-builder";
 import { writeFileSync } from "node:fs";
@@ -19,6 +19,7 @@ function requireEnv(name: string): string {
 }
 
 const ASANA_TICKET_LAMBDA_ARN = requireEnv("ASANA_TICKET_LAMBDA_ARN");
+const BEEP_WAV_S3_URI = requireEnv("BEEP_WAV_S3_URI");
 
 const disconnect = new DisconnectParticipantActionBuilder("Disconnect").build();
 
@@ -49,44 +50,60 @@ const pleaseWait = new MessageParticipantActionBuilder("PleaseWait")
   .onError("Disconnect")
   .build();
 
-const disableRecording = new UpdateContactRecordingBehaviorActionBuilder(
+const disableRecording = new UpdateContactRecordingAndAnalyticsBehaviorActionBuilder(
   "DisableRecording",
 )
-  .recordParticipants()
-  .enableIvrRecording()
-  .analyticsEnabled("en-US")
+  .voiceRecording([], "Disabled")
+  .voiceAnalyticsBehavior({ Enabled: "True", AnalyticsLanguage: "en-US" })
   .next("PleaseWait")
+  .onError("PleaseWait", "NoMatchingError")
+  .onError("PleaseWait", "ChannelMismatch")
   .build();
 
 const describeIssue = new MessageParticipantActionBuilder("DescribeIssue")
   .text(
-    "Please describe the issue you are experiencing after the tone. " +
-      "We'll record your description and open a support ticket.",
+    "Please describe the issue you are experiencing. We'll record your " +
+      "description and open a support ticket.",
   )
+  .next("Beep")
+  .onError("Beep")
+  .build();
+
+const beep = new MessageParticipantActionBuilder("Beep")
+  .text("placeholder")
+  .next("EnableRecording")
+  .onError("EnableRecording")
+  .build();
+
+const recordingPause = new MessageParticipantActionBuilder("RecordingPause")
+  .text("placeholder")
   .next("DisableRecording")
   .onError("DisableRecording")
   .build();
 
-const enableRecording = new UpdateContactRecordingBehaviorActionBuilder(
+const enableRecording = new UpdateContactRecordingAndAnalyticsBehaviorActionBuilder(
   "EnableRecording",
 )
-  .recordParticipants()
-  .enableIvrRecording()
-  .analyticsEnabled("en-US")
-  .next("DescribeIssue")
+  .voiceRecording([], "Enabled")
+  .voiceAnalyticsBehavior({ Enabled: "True", AnalyticsLanguage: "en-US" })
+  .next("RecordingPause")
+  .onError("RecordingPause", "NoMatchingError")
+  .onError("RecordingPause", "ChannelMismatch")
   .build();
 
 const enableLogging = new UpdateFlowLoggingBehaviorActionBuilder(
   "EnableLogging",
 )
   .enabled()
-  .next("EnableRecording")
+  .next("DescribeIssue")
   .build();
 
 const flow = new FlowBuilder("AsanaIntegration")
   .startWith(enableLogging)
-  .add(enableRecording)
   .add(describeIssue)
+  .add(beep)
+  .add(enableRecording)
+  .add(recordingPause)
   .add(disableRecording)
   .add(pleaseWait)
   .add(createTicket)
@@ -98,9 +115,9 @@ const definition = flow.toConnectDefinition() as unknown as {
   Actions: Array<{
     Identifier: string;
     Parameters?: {
-      RecordingBehavior?: { IVRRecordingBehavior?: string };
       Text?: string;
       SSML?: string;
+      Media?: { Uri: string; SourceType: string; MediaType: string };
     };
     Transitions?: { Errors?: unknown[] };
   }>;
@@ -108,24 +125,18 @@ const definition = flow.toConnectDefinition() as unknown as {
 };
 
 for (const action of definition.Actions) {
-  if (
-    (action.Identifier === "EnableRecording" ||
-      action.Identifier === "DisableRecording") &&
-    action.Transitions
-  ) {
-    delete action.Transitions.Errors;
+  if (action.Identifier === "Beep" && action.Parameters) {
+    action.Parameters.Media = {
+      Uri: BEEP_WAV_S3_URI,
+      SourceType: "S3",
+      MediaType: "Audio",
+    };
+    delete action.Parameters.Text;
   }
-  if (
-    action.Identifier === "DisableRecording" &&
-    action.Parameters?.RecordingBehavior
-  ) {
-    action.Parameters.RecordingBehavior.IVRRecordingBehavior = "Disabled";
-  }
-  if (action.Identifier === "DescribeIssue" && action.Parameters) {
+  if (action.Identifier === "RecordingPause" && action.Parameters) {
     // Two 10s breaks (Polly's SSML <break> max is 10s per element) hold the
     // recording window open for ~20s while the caller speaks.
-    action.Parameters.SSML =
-      `<speak>${action.Parameters.Text}<break time="10s"/><break time="10s"/></speak>`;
+    action.Parameters.SSML = `<speak><break time="10s"/><break time="10s"/></speak>`;
     delete action.Parameters.Text;
   }
   if (action.Identifier === "ReturnCaseNumber" && action.Parameters) {
