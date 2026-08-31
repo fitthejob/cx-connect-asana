@@ -58,6 +58,77 @@ text transcript of what the caller said, all without any agent involvement.
 
 ---
 
+## What appears in Asana
+
+A single task is created per call, in the project configured for the
+deployment. It goes through two states:
+
+**When the call ends** (task created immediately, before transcription):
+
+- **Task name:** `Self-service ticket: <customer ID or contact ID>`
+- **Notes:** `Transcription pending...`, followed by the Customer ID and
+  Caller ANI, if available
+
+**Once transcription finishes** (notes are replaced, not appended to):
+
+- **Notes:** the full call transcript, followed by the Customer ID and
+  Caller ANI, if available
+
+The case number read back to the caller on the call is the task's Asana
+GID, so the caller's case number and the Asana task are the same
+identifier.
+
+---
+
+## API surfaces
+
+**Asana API** (`https://app.asana.com/api/1.0`):
+
+- `POST /tasks`: called by the asana-ticket Lambda when the call ends, to
+  create the task and get back its GID (used as the case number).
+- `PUT /tasks/{gid}`: called by the asana-transcript-update Lambda once
+  transcription completes, to replace the task's notes with the final
+  transcript.
+
+**AWS Secrets Manager:**
+
+- `GetSecretValue`: called by both Asana-facing Lambdas to fetch the Asana
+  API token at invocation time, rather than storing it in an environment
+  variable.
+
+**AWS Transcribe:**
+
+- `StartTranscriptionJob`: called by the recording-transcribe Lambda once
+  a call recording lands in S3, pointing Transcribe at the recording and
+  at an S3 output location for the finished transcript. This is a
+  fire-and-forget call; Transcribe runs the job and completion is picked
+  up separately via EventBridge.
+
+**AWS DynamoDB** (contact-correlation table):
+
+- `PutItem`: called by the asana-ticket Lambda to record the mapping from
+  a Connect contact ID to its new Asana task GID.
+- `GetItem`: called by both the recording-transcribe Lambda (to look up
+  the Asana task GID for tagging the transcription job) and the
+  asana-transcript-update Lambda (to look up the Asana task GID, customer
+  ID, and caller ANI for the final notes update).
+
+**AWS S3:**
+
+- `GetObject`: called by the asana-transcript-update Lambda to read the
+  finished transcript JSON that Transcribe wrote out.
+
+**Amazon Connect flow actions** (consumed by this module, not called by
+Lambda code):
+
+- `InvokeLambdaFunction`: invokes the asana-ticket Lambda mid-flow.
+- `UpdateContactRecordingAndAnalyticsBehavior`: toggles call recording on
+  and off around the caller's description.
+- `ConnectParticipantWithLexBot`: hands the call to the dedicated Lex bot
+  for speech-end detection.
+
+---
+
 ## Key architectural decisions
 
 - **Flow JSON is generated from code, not hand-authored in Flow Designer:**
