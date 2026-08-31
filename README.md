@@ -154,6 +154,41 @@ through CI, not through cross-repo Terraform state.
 
 ---
 
+## Scaling considerations
+
+**Current behavior:** the recording-transcribe Lambda is invoked directly
+by an S3 `ObjectCreated` event notification when a call recording lands in
+the bucket. There is no queue between S3 and the Lambda. Amazon Transcribe
+itself already runs each transcription job asynchronously in the
+background once started, so the Lambda's own job is brief: start the job
+and return.
+
+**At enterprise scale**, direct S3-to-Lambda invocation has no backpressure.
+A burst of calls ending at once, for example after an outage or during
+peak volume, fires that many concurrent Lambda invocations simultaneously,
+with no smoothing. The concern isn't the transcription work itself
+(Transcribe already scales that independently); it's:
+
+- **Lambda concurrency.** A large burst can hit account or function
+  concurrency limits, causing throttling and retry storms instead of
+  graceful buffering.
+- **Retry and failure handling.** S3's built-in retry behavior for async
+  Lambda invocations is blunter than a proper queue's visibility timeout
+  and dead-letter queue, which give controlled retries and a durable place
+  to inspect failures.
+- **Transcribe's own concurrent-job quota.** `StartTranscriptionJob` has an
+  account-level limit on concurrent jobs. A sudden spike could get
+  throttled by Transcribe even if the Lambda invocations themselves
+  succeed.
+
+The standard fix at that point is inserting an SQS queue between S3 and the
+Lambda (S3 to SQS to Lambda), with a controlled batch size and Lambda
+concurrency, to smooth bursts into a steady rate rather than one burst of
+simultaneous invocations. This isn't needed at current volume, but is the
+natural next step if call volume grows significantly.
+
+---
+
 ## Validation and testing
 
 Every deploy pushes the generated flow JSON to a permanent
