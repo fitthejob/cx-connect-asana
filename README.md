@@ -55,6 +55,14 @@ text transcript of what the caller said, all without any agent involvement.
   unrelated menu intent.
 - **S3:** hosts the beep prompt audio and stores call recordings.
 - **Secrets Manager:** holds the Asana API token used by the Lambdas.
+- **EventBridge:** listens for Amazon Transcribe's own native
+  `Transcribe Job State Change` event (source `aws.transcribe`, emitted by
+  AWS itself when a transcription job finishes, not by anything in this
+  repo) and fans it out to two targets: a durable SQS queue that retains a
+  copy of every completion event as a safety net, and the
+  asana-transcript-update Lambda directly, which has its own retry policy
+  and a separate dead-letter queue for invocations that fail after
+  retries.
 
 ---
 
@@ -232,7 +240,10 @@ by an S3 `ObjectCreated` event notification when a call recording lands in
 the bucket. There is no queue between S3 and the Lambda. Amazon Transcribe
 itself already runs each transcription job asynchronously in the
 background once started, so the Lambda's own job is brief: start the job
-and return.
+and return. Further downstream, the transcription-completion event does
+already pass through EventBridge with a durable SQS queue and a
+Lambda-target dead-letter queue (see high-level components above); the gap
+discussed here is specifically the earlier S3-to-Lambda leg, not that one.
 
 **At enterprise scale**, direct S3-to-Lambda invocation has no backpressure.
 A burst of calls ending at once, for example after an outage or during
